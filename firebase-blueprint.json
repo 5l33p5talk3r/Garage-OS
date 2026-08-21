@@ -1,0 +1,96 @@
+{
+  "entities": {
+    "users": {
+      "title": "User",
+      "description": "User profile and subscription data",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "tier": { "type": "string", "enum": ["basic", "pro"] },
+        "vehicleLimit": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "tier", "vehicleLimit", "createdAt"]
+    },
+    "vehicles": {
+      "title": "Vehicle",
+      "description": "Vehicle profile managed by the user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "vin": { "type": "string" },
+        "make": { "type": "string" },
+        "model": { "type": "string" },
+        "year": { "type": "number" },
+        "photoUrl": { "type": "string" },
+        "last_updated": { "type": "string", "format": "date-time" },
+        "diagnoses": { "type": "array" },
+        "parameters": { "type": "array" },
+        "reminders": { "type": "array" },
+        "tuningProfile": {
+          "type": "object",
+          "properties": {
+            "platform": { "type": "string" },
+            "stage": { "type": "number" },
+            "boostLimit": { "type": "number" },
+            "revLimit": { "type": "number" },
+            "protectionFeatures": {
+              "type": "object",
+              "properties": {
+                "knockDetection": { "type": "boolean" },
+                "leanProtection": { "type": "boolean" },
+                "overboostProtection": { "type": "boolean" }
+              }
+            },
+            "lastWrite": { "type": "string" }
+          }
+        }
+      },
+      "required": ["userId", "vin", "make", "model", "year", "last_updated", "diagnoses", "parameters", "reminders"]
+    },
+    "chatMessages": {
+      "title": "Chat Message",
+      "description": "Messages in the AI chat",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "assistant"] },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "role", "content", "timestamp"]
+    },
+    "scanHistory": {
+      "title": "Scan History",
+      "description": "Historical record of OBD2 scans",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "mode": { "type": "string", "enum": ["quick", "full", "custom"] },
+        "parametersScanned": { "type": "array" },
+        "findings": { "type": "array" }
+      },
+      "required": ["userId", "vehicleId", "timestamp", "mode", "parametersScanned", "findings"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "User profile documents"
+    },
+    "/vehicles/{vehicleId}": {
+      "schema": "vehicles",
+      "description": "Vehicle documents"
+    },
+    "/chatMessages/{messageId}": {
+      "schema": "chatMessages",
+      "description": "Chat message documents"
+    },
+    "/scanHistory/{scanId}": {
+      "schema": "scanHistory",
+      "description": "OBD2 scan history documents"
+    }
+  }
+}
