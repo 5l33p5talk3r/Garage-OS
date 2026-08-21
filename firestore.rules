@@ -1,0 +1,127 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (Auth UID)
+    // Fields:
+    //   - email: string (required)
+    //   - tier: string (basic, pro, platinum) (required)
+    //   - vehicleLimit: number
+    //   - createdAt: string (ISO 8601)
+    //
+    // Collection: vehicles
+    // Document ID: auto-generated
+    // Fields:
+    //   - userId: string (required, owner)
+    //   - vin: string (17 chars)
+    //   - make: string
+    //   - model: string
+    //   - year: number
+    //   - photoUrl: string (optional)
+    //   - last_updated: string (ISO 8601)
+    //   - tuningProfile: map (optional)
+    //
+    // Collection: chatMessages
+    // Document ID: auto-generated
+    // Fields:
+    //   - userId: string (required, owner)
+    //   - role: string (user, assistant)
+    //   - content: string
+    //   - timestamp: string (ISO 8601)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tier == 'platinum' ||
+          ((request.auth.token.email == "slottzb46@gmail.com" || request.auth.token.email == "haynes7163@gmail.com") && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'tier', 'vehicleLimit', 'createdAt']) &&
+             data.email is string &&
+             data.tier in ['basic', 'pro', 'platinum'] &&
+             data.vehicleLimit is int &&
+             data.createdAt is string;
+    }
+
+    function isValidVehicle(data) {
+      return data.keys().hasAll(['userId', 'vin', 'make', 'model', 'year', 'last_updated']) &&
+             (data.userId == request.auth.uid || isAdmin()) &&
+             data.vin is string && data.vin.size() >= 1 && data.vin.size() <= 20 &&
+             data.make is string && data.make.size() > 0 && data.make.size() < 100 &&
+             data.model is string && data.model.size() > 0 && data.model.size() < 100 &&
+             data.year is number &&
+             data.last_updated is string &&
+             (!('diagnoses' in data) || data.diagnoses is list) &&
+             (!('parameters' in data) || data.parameters is list) &&
+             (!('reminders' in data) || data.reminders is list) &&
+             (!('serviceHistory' in data) || data.serviceHistory is list) &&
+             (!('tuningProfile' in data) || (data.tuningProfile is map)) &&
+             (!('photoUrl' in data) || (data.photoUrl is string || data.photoUrl == null));
+    }
+
+    function isValidChatMessage(data) {
+      return data.keys().hasAll(['userId', 'role', 'content', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.role in ['user', 'assistant'] &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 5000;
+    }
+
+    function isValidScanResult(data) {
+      return data.keys().hasAll(['userId', 'vehicleId', 'timestamp', 'mode', 'parametersScanned', 'findings']) &&
+             data.userId == request.auth.uid &&
+             data.vehicleId is string &&
+             data.mode in ['quick', 'full', 'custom', 'all_systems'] &&
+             data.timestamp is string &&
+             data.parametersScanned is list &&
+             data.findings is list;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data);
+    }
+
+    match /vehicles/{vehicleId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidVehicle(request.resource.data);
+      allow update: if (isDocOwner() || isAdmin()) && isValidVehicle(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /chatMessages/{messageId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidChatMessage(request.resource.data);
+    }
+
+    match /scanHistory/{scanId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidScanResult(request.resource.data);
+    }
+  }
+}
