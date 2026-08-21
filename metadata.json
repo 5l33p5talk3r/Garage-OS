@@ -1,0 +1,5 @@
+{
+  "name": "GarageOS",
+  "description": "Professional-grade vehicle diagnostic, tuning, and key programming suite with multi-tier subscription access.",
+  "requestFramePermissions": ["geolocation", "bluetooth", "display-capture"]
+}
